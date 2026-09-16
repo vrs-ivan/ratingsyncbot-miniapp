@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>UK Offers Update Manager</title>
+  <link rel="stylesheet" href="bot-menu.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <!-- data-demo="true" запускає безпечну локальну симуляцію. Для n8n змінити на false. -->
+  <main class="app" id="app" data-demo="true" data-api-base="https://YOUR-N8N-DOMAIN/webhook">
+    <svg class="sprite" aria-hidden="true">
+      <symbol id="i-rocket" viewBox="0 0 24 24"><path d="M14.5 5.5c2.1-2.1 4.6-2.4 5.7-2.4.1 1.1-.3 3.6-2.4 5.7l-5.3 5.3-4.2-4.2 6.2-4.4Z"/><path d="m8.3 9.9-3.6.5-2 2 5.2.7M12.5 14.1l-.5 3.6-2 2-.7-5.2M5.5 16.5c-1.1.2-1.8.9-2 2 1.1-.2 1.8-.9 2-2Z"/><circle cx="16" cy="8" r="1.5"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.4-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.4 5.5-9.5 5.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-5.4-8.25"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></symbol>
+    </svg>
+
+    <section class="card" aria-label="Керування оновленнями">
+      <header class="card__header">
+        <div>
+          <h1>Керування оновленнями</h1>
+          <p>UK Offers Table Sync</p>
+        </div>
+        <button class="menu-toggle" type="button" aria-expanded="true" aria-controls="controls">
+          <svg><use href="#i-x"/></svg><span>Меню</span>
+        </button>
+      </header>
+
+      <div id="controls">
+        <div class="status status--idle" role="status" aria-live="polite">
+          <svg class="status__icon"><use href="#i-info"/></svg>
+          <div class="status__copy">
+            <strong id="status-title">Готово до запуску</strong>
+            <span id="status-detail">Оновлення не виконується</span>
+          </div>
+          <span id="status-percent"></span>
+        </div>
+
+        <div class="progress" role="progressbar" aria-label="Прогрес оновлення" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span id="progress-bar"></span>
+        </div>
+
+        <div class="actions">
+          <button class="action action--start" type="button" data-action="start">
+            <svg class="icon-ready"><use href="#i-rocket"/></svg>
+            <svg class="icon-running"><use href="#i-loader"/></svg>
+            <span>ЗАПУСТИТИ</span>
+          </button>
+          <button class="action action--view" type="button" data-action="view">
+            <svg><use href="#i-eye"/></svg><span>ПЕРЕГЛЯНУТИ</span>
+          </button>
+          <button class="action action--stop" type="button" data-action="stop" disabled>
+            <svg><use href="#i-pause"/></svg><span>ЗУПИНИТИ</span>
+          </button>
+          <button class="action action--cancel" type="button" data-action="cancel" disabled>
+            <svg><use href="#i-x"/></svg><span>СКАСУВАТИ</span>
+          </button>
+        </div>
+
+        <section class="details" id="details" hidden aria-live="polite">
+          <dl>
+            <div><dt>Поточний сайт</dt><dd id="current-domain">—</dd></div>
+            <div><dt>Аркуш</dt><dd id="current-sheet">—</dd></div>
+            <div><dt>Виконано</dt><dd id="processed-sites">0 / 0</dd></div>
+            <div><dt>У черзі</dt><dd id="remaining-sites">0</dd></div>
+          </dl>
+        </section>
+
+        <p class="hint" id="hint">«Скасувати» стане доступною після повного оновлення.</p>
+      </div>
+    </section>
+  </main>
+  <script src="bot-menu.js"></script>
+</body>
+</html>

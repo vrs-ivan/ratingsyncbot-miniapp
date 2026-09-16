@@ -1,0 +1,10 @@
+{
+  "target_chat_id": -1001234567890,
+  "target_message_thread_id": 12345,
+  "allowed_user_ids": [
+    111111111,
+    222222222
+  ],
+  "thread_context_ttl_seconds": 120,
+  "notes": "Тут немає bot token або інших секретів. Реальні значення зберігати в n8n Credentials/Variables, а не у frontend."
+}
