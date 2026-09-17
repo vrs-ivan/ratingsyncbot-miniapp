@@ -108,19 +108,33 @@
         : '«Скасувати» стане доступною після повного оновлення.';
   }
 
-  async function request(path, options = {}) {
-    const response = await fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Telegram-Init-Data': tg?.initData || '',
-        'X-Bot-Thread-Context': threadContextToken,
-        ...options.headers
+  async function request(path, options = {}, retries = 2) {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const response = await fetch(`${apiBase}${path}`, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': tg?.initData || '',
+            'X-Bot-Thread-Context': threadContextToken,
+            ...options.headers
+          }
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || body.ok === false) throw new Error(body.message || `HTTP ${response.status}`);
+        return body.job;
+      } catch (error) {
+        // "Failed to fetch" (TypeError) means the request never reached/returned from
+        // the server at all — server may still be slow/flaky (n8n host), not a real
+        // rejection like 401/409. Retry those with backoff instead of surfacing them.
+        const isNetworkError = error instanceof TypeError;
+        if (isNetworkError && attempt < retries) {
+          await new Promise(resolve => window.setTimeout(resolve, 1500 * (attempt + 1)));
+          continue;
+        }
+        throw error;
       }
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok || body.ok === false) throw new Error(body.message || `HTTP ${response.status}`);
-    return body.job;
+    }
   }
 
   function beginPolling() {
@@ -176,6 +190,23 @@
       render(job);
       beginPolling();
     } catch (error) {
+      // The POST may have actually reached the server and created the job
+      // even though this browser never got a clean response back (slow/
+      // flaky host) — check current state once before declaring failure.
+      // Only trust it as evidence THIS start succeeded if the job is
+      // actively in progress: an 'idle'/'completed'/'failed' job here is
+      // just the PREVIOUS run's leftover state, not proof this click did
+      // anything — showing it as success would misreport a real failure.
+      try {
+        const job = await request('/bot/jobs/current');
+        if (job && job.job_id && ['queued', 'running', 'rollback_pending'].includes(job.status)) {
+          render(job);
+          beginPolling();
+          return;
+        }
+      } catch (_) {
+        // fall through to failed state below
+      }
       render({ status: 'failed', last_error: error.message });
     }
   }
