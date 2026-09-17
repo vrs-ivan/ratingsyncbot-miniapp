@@ -111,8 +111,15 @@
   async function request(path, options = {}, retries = 2) {
     for (let attempt = 0; ; attempt++) {
       try {
-        const response = await fetch(`${apiBase}${path}`, {
+        // GET polls always hit the exact same URL (e.g. /bot/jobs/current) -
+        // without a cache-buster the browser/WebView is free to serve a
+        // stale cached response instead of asking the server again, which
+        // looked like the UI "not updating in real time".
+        const sep = path.includes('?') ? '&' : '?';
+        const url = `${apiBase}${path}${sep}_=${Date.now()}`;
+        const response = await fetch(url, {
           ...options,
+          cache: 'no-store',
           headers: {
             'Content-Type': 'application/json',
             'X-Telegram-Init-Data': tg?.initData || '',
