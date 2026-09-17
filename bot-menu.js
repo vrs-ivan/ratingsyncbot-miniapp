@@ -32,6 +32,7 @@
   let currentJob = null;
   let pollTimer = null;
   let demoTimer = null;
+  let pollSeq = 0;
 
   const labels = {
     idle: ['Готово до запуску', 'Оновлення не виконується'],
@@ -129,6 +130,11 @@
         });
         const body = await response.json().catch(() => ({}));
         if (!response.ok || body.ok === false) throw new Error(body.message || `HTTP ${response.status}`);
+        // ok:true with no job data means something upstream returned a
+        // malformed/empty success response (seen during n8n host hiccups) -
+        // treat it as an error rather than handing undefined to the caller,
+        // which crashed with "Cannot read properties of undefined".
+        if (!body.job) throw new Error('Malformed response: missing job data');
         return body.job;
       } catch (error) {
         // "Failed to fetch" (TypeError) means the request never reached/returned from
@@ -151,8 +157,16 @@
 
   async function loadCurrent() {
     if (demo) return;
+    // Retries add variable delay, so two overlapping polls can resolve out
+    // of order — a slow earlier response arriving after a faster later one
+    // would repaint the UI with stale data (the "flickers back to an old
+    // status" symptom). Only the most recently STARTED call is allowed to
+    // touch the DOM; anything that resolves after a newer call already
+    // started is silently discarded.
+    const mySeq = ++pollSeq;
     try {
       const job = await request('/bot/jobs/current');
+      if (mySeq !== pollSeq) return;
       render(job);
       // Keep polling alive whenever the job is active, regardless of HOW this
       // check was triggered (fresh page load reopening an already-running
@@ -164,6 +178,7 @@
         window.clearInterval(pollTimer);
       }
     } catch (error) {
+      if (mySeq !== pollSeq) return;
       ui.hint.textContent = error.message;
     }
   }
@@ -193,6 +208,7 @@
   async function start() {
     ui.start.disabled = true;
     if (demo) return runDemo();
+    const mySeq = ++pollSeq;
     try {
       const idempotencyKey = crypto.randomUUID?.()
         || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -200,6 +216,7 @@
         method: 'POST',
         body: JSON.stringify({ idempotency_key: idempotencyKey })
       });
+      if (mySeq !== pollSeq) return;
       render(job);
       beginPolling();
     } catch (error) {
@@ -212,6 +229,7 @@
       // anything — showing it as success would misreport a real failure.
       try {
         const job = await request('/bot/jobs/current');
+        if (mySeq !== pollSeq) return;
         if (job && job.job_id && ['queued', 'running', 'rollback_pending'].includes(job.status)) {
           render(job);
           beginPolling();
@@ -220,6 +238,7 @@
       } catch (_) {
         // fall through to failed state below
       }
+      if (mySeq !== pollSeq) return;
       render({ status: 'failed', last_error: error.message });
     }
   }
@@ -231,9 +250,13 @@
       window.clearInterval(demoTimer);
       return render({ ...currentJob, status: 'stopped' });
     }
+    const mySeq = ++pollSeq;
     try {
-      render(await request(`/bot/jobs/${encodeURIComponent(currentJob.job_id)}/stop`, { method: 'POST', body: '{}' }));
+      const job = await request(`/bot/jobs/${encodeURIComponent(currentJob.job_id)}/stop`, { method: 'POST', body: '{}' });
+      if (mySeq !== pollSeq) return;
+      render(job);
     } catch (error) {
+      if (mySeq !== pollSeq) return;
       ui.hint.textContent = error.message;
       ui.stop.disabled = false;
     }
@@ -246,11 +269,14 @@
       render({ ...currentJob, status: 'rollback_pending', rollback_available: false });
       return window.setTimeout(() => render({ ...currentJob, status: 'rolled_back', rollback_available: false }), 1200);
     }
+    const mySeq = ++pollSeq;
     try {
       const job = await request(`/bot/jobs/${encodeURIComponent(currentJob.job_id)}/rollback`, { method: 'POST', body: '{}' });
+      if (mySeq !== pollSeq) return;
       render(job);
       beginPolling();
     } catch (error) {
+      if (mySeq !== pollSeq) return;
       ui.hint.textContent = error.message;
       ui.cancel.disabled = false;
     }
