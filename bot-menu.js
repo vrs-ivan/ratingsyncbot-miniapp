@@ -208,6 +208,12 @@
   async function start() {
     ui.start.disabled = true;
     if (demo) return runDemo();
+    // Stop any in-flight polling interval first: if a leftover poll from
+    // before this click resolves later (e.g. our own request is delayed by
+    // a retry), it would still be the newest sequenced call and legitimately
+    // win the race - just with a snapshot of the OLD job, painting "completed"
+    // right after pressing Start. Nothing to poll for yet anyway.
+    window.clearInterval(pollTimer);
     const mySeq = ++pollSeq;
     try {
       const idempotencyKey = crypto.randomUUID?.()
@@ -250,6 +256,7 @@
       window.clearInterval(demoTimer);
       return render({ ...currentJob, status: 'stopped' });
     }
+    window.clearInterval(pollTimer);
     const mySeq = ++pollSeq;
     try {
       const job = await request(`/bot/jobs/${encodeURIComponent(currentJob.job_id)}/stop`, { method: 'POST', body: '{}' });
@@ -269,6 +276,7 @@
       render({ ...currentJob, status: 'rollback_pending', rollback_available: false });
       return window.setTimeout(() => render({ ...currentJob, status: 'rolled_back', rollback_available: false }), 1200);
     }
+    window.clearInterval(pollTimer);
     const mySeq = ++pollSeq;
     try {
       const job = await request(`/bot/jobs/${encodeURIComponent(currentJob.job_id)}/rollback`, { method: 'POST', body: '{}' });
