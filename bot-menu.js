@@ -6,7 +6,7 @@
   const demo = app.dataset.demo !== 'false';
   const apiBase = app.dataset.apiBase.replace(/\/$/, '');
   const threadContextToken = new URLSearchParams(window.location.search).get('thread_context') || '';
-  const pollIntervalMs = 2000;
+  const pollIntervalMs = 5000;
 
   const ui = {
     controls: document.getElementById('controls'),
