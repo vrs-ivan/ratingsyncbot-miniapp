@@ -147,7 +147,13 @@
     try {
       const job = await request('/bot/jobs/current');
       render(job);
-      if (!['queued', 'running', 'rollback_pending'].includes(job.status)) {
+      // Keep polling alive whenever the job is active, regardless of HOW this
+      // check was triggered (fresh page load reopening an already-running
+      // job, not just the "Start" click) — otherwise a reopened Mini App
+      // shows one static snapshot forever until manually refreshed.
+      if (['queued', 'running', 'rollback_pending'].includes(job.status)) {
+        beginPolling();
+      } else {
         window.clearInterval(pollTimer);
       }
     } catch (error) {
