@@ -259,7 +259,7 @@
     window.clearInterval(pollTimer);
     const mySeq = ++pollSeq;
     try {
-      const job = await request(`/bot/jobs/${encodeURIComponent(currentJob.job_id)}/stop`, { method: 'POST', body: '{}' });
+      const job = await request('/bot/jobs/stop', { method: 'POST', body: JSON.stringify({ job_id: currentJob.job_id }) });
       if (mySeq !== pollSeq) return;
       render(job);
     } catch (error) {
@@ -279,7 +279,7 @@
     window.clearInterval(pollTimer);
     const mySeq = ++pollSeq;
     try {
-      const job = await request(`/bot/jobs/${encodeURIComponent(currentJob.job_id)}/rollback`, { method: 'POST', body: '{}' });
+      const job = await request('/bot/jobs/rollback', { method: 'POST', body: JSON.stringify({ job_id: currentJob.job_id }) });
       if (mySeq !== pollSeq) return;
       render(job);
       beginPolling();
